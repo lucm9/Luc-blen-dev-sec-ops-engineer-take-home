@@ -1,0 +1,12 @@
+app/node_modules/*
+app/.next/*
+.claude
+
+# Terraform
+terraform/.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Docker
+docker-compose.override.yml

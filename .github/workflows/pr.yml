@@ -1,0 +1,83 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  terraform-checks:
+    name: Terraform Validate & Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: Set up Terraform 
+
+      # TODO: Run terraform fmt -check
+
+      # TODO: Run terraform init -backend=false
+
+      # TODO: Run terraform validate
+
+      # TODO: Install and run tflint
+
+      # TODO: Run checkov or tfsec against the terraform directory
+
+  docker-lint:
+    name: Dockerfile Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: Run hadolint on app/Dockerfile
+      # Hint: hadolint/hadolint-action or run hadolint directly
+
+  docker-build-and-scan:
+    name: Docker Build & Trivy Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: Build the Docker image from app/Dockerfile
+      # Hint: docker build -t app:${{ github.sha }} ./app
+
+      # TODO: Run Trivy vulnerability scanner on the built image
+      # Hint: aquasecurity/trivy-action or run trivy directly
+
+  app-security:
+    name: Application Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: Run npm audit or trivy fs on the app directory
+      # Hint: cd app && npm ci && npm audit --audit-level=high
+      #   or: trivy fs --severity HIGH,CRITICAL ./app
+
+  secret-detection:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # TODO: Run gitleaks to detect any hardcoded secrets
+      # Hint: gitleaks/gitleaks-action or run gitleaks directly
+
+  docker-compose-test:
+    name: Docker Compose Integration Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: Start services with docker compose up -d
+
+      # TODO: Wait for services to be healthy
+
+      # TODO: Curl localhost:3000/api/db-check and verify a successful response
+
+      # TODO: Tear down with docker compose down
