@@ -8,46 +8,33 @@ variable "environment" {
   type        = string
 }
 
-variable "private_subnet_ids" {
-  description = "IDs of the private subnets for ECS tasks"
-  type        = list(string)
-}
-
-variable "container_image" {
-  description = "Container image URI for the application"
+variable "vpc_id" {
+  description = "ID of the VPC"
   type        = string
 }
 
+variable "public_subnet_ids" {
+  description = "IDs of the public subnets for the ALB"
+  type        = list(string)
+}
+
 variable "container_port" {
-  description = "Port the container listens on"
+  description = "Port the application container listens on"
   type        = number
   default     = 3000
 }
 
-variable "secret_arn" {
-  description = "ARN of the Secrets Manager secret for DB credentials"
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate for HTTPS. Leave empty to use HTTP-only listener."
+  type        = string
+  default     = ""
+}
+
+variable "alb_security_group" {
+  description = "Security group ID for the ALB (created at root level)"
   type        = string
 }
 
-variable "db_host" {
-  description = "Database host endpoint"
-  type        = string
-}
-
-variable "ecs_security_group" {
-  description = "Security group ID for ECS tasks (created at root level)"
-  type        = string
-}
-
-variable "alb_target_group" {
-  description = "ARN of the ALB target group"
-  type        = string
-}
-
-variable "kms_key_arn" {
-  description = "ARN of the KMS key for encryption"
-  type        = string
-}
 
 variable "common_tags" {
   description = "Common tags for all resources"

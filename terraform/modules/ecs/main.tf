@@ -52,6 +52,25 @@ resource "aws_iam_role" "ecs_execution" {
   tags = var.common_tags
 }
 
+resource "aws_iam_role" "ecs_task" {
+  name = "${var.name}-${var.environment}-ecs-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.common_tags
+}
+
 # Task Definition 
 resource "aws_ecs_task_definition" "app" {
   family                   = "${var.name}-${var.environment}-app"
@@ -105,7 +124,7 @@ resource "aws_ecs_task_definition" "app" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.app.name
-          "awslogs-region"        = data.aws_region.current.name
+          "awslogs-region"        = data.aws_region.current.id
           "awslogs-stream-prefix" = "ecs"
         }
       }

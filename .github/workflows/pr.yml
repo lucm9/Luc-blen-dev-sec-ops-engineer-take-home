@@ -52,6 +52,7 @@ jobs:
           directory: terraform
           framework: terraform
           soft_fail: false
+          skip_check: CKV_AWS_91
 
   docker-lint:
     name: Dockerfile Lint

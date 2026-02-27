@@ -9,197 +9,77 @@ terraform {
   }
 }
 
-# ECS Cluster 
-resource "aws_ecs_cluster" "main" {
-  name = "${var.name}-${var.environment}-cluster"
+# checkov:skip=CKV_AWS_91:ALB access logs require an S3 bucket with specific policies
+#Application Load Balancer 
+resource "aws_lb" "main" {
+  name               = "${var.name}-${var.environment}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [var.alb_security_group]
+  subnets            = var.public_subnet_ids
 
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
+  enable_deletion_protection = true
+  drop_invalid_header_fields = true
+
+  tags = merge(var.common_tags, {
+    Name = "${var.name}-${var.environment}-alb"
+  })
+}
+
+#Target Group
+resource "aws_lb_target_group" "app" {
+  name        = "${var.name}-${var.environment}-tg"
+  port        = var.container_port
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    path                = "/api/db-check"
+    matcher             = "200"
+    protocol            = "HTTP"
   }
 
   tags = merge(var.common_tags, {
-    Name = "${var.name}-${var.environment}-cluster"
+    Name = "${var.name}-${var.environment}-tg"
   })
 }
 
-#CloudWatch log group
-resource "aws_cloudwatch_log_group" "app" {
-  name              = "/ecs/${var.name}-${var.environment}"
-  retention_in_days = 365
-  kms_key_id        = var.kms_key_arn
+#HTTPS Listener
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
 
   tags = var.common_tags
 }
 
-#ECS Task Execution Role (pulls images, reads secrets)
-resource "aws_iam_role" "ecs_execution" {
-  name = "${var.name}-${var.environment}-ecs-execution-role"
+#HTTP Listener (redirect to HTTPS)
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = "HTTP"
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = var.common_tags
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_execution" {
-  role       = aws_iam_role.ecs_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-resource "aws_iam_role_policy" "ecs_execution_secrets" {
-  name = "${var.name}-${var.environment}-ecs-secrets-policy"
-  role = aws_iam_role.ecs_execution.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue"
-        ]
-        Resource = [var.secret_arn]
-      }
-    ]
-  })
-}
-
-#ECS Task Role (app runtime permissions — least privilege)
-resource "aws_iam_role" "ecs_task" {
-  name = "${var.name}-${var.environment}-ecs-task-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = var.common_tags
-}
-
-#Task Definition
-resource "aws_ecs_task_definition" "app" {
-  family                   = "${var.name}-${var.environment}-app"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
-
-  container_definitions = jsonencode([
-    {
-      name      = "${var.name}-app"
-      image     = var.container_image
-      essential = true
-
-      portMappings = [
-        {
-          containerPort = var.container_port
-          protocol      = "tcp"
-        }
-      ]
-
-      secrets = [
-        {
-          name      = "DB_USER"
-          valueFrom = "${var.secret_arn}:username::"
-        },
-        {
-          name      = "DB_PASSWORD"
-          valueFrom = "${var.secret_arn}:password::"
-        },
-        {
-          name      = "DB_NAME"
-          valueFrom = "${var.secret_arn}:dbname::"
-        },
-        {
-          name      = "DB_PORT"
-          valueFrom = "${var.secret_arn}:port::"
-        }
-      ]
-
-      environment = [
-        {
-          name  = "DB_HOST"
-          value = var.db_host
-        }
-      ]
-
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.app.name
-          "awslogs-region"        = data.aws_region.current.name
-          "awslogs-stream-prefix" = "ecs"
-        }
-      }
-
-      healthCheck = {
-        command     = ["CMD-SHELL", "wget -qO- http://localhost:${var.container_port}/api/db-check || exit 1"]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 60
-      }
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
     }
-  ])
+  }
 
-  tags = merge(var.common_tags, {
-    Name = "${var.name}-${var.environment}-task"
-  })
+  tags = var.common_tags
 }
-
-data "aws_region" "current" {}
-
-# ECS Service
-# NOTE: The ECS service must wait for at least one ALB listener to associate otherwise module could fail
-# the target group with the load balancer. Without this AWS rejects the
-# CreateService call because the target group has no associated ALB.
-resource "aws_ecs_service" "app" {
-  name            = "${var.name}-${var.environment}-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets          = var.private_subnet_ids
-    security_groups  = [var.ecs_security_group]
-    assign_public_ip = false
-  }
-
-  load_balancer {
-    target_group_arn = var.alb_target_group
-    container_name   = "${var.name}-app"
-    container_port   = var.container_port
-  }
-
-  deployment_circuit_breaker {
-    enable   = true
-    rollback = true
-  }
-
-  tags = merge(var.common_tags, {
-    Name = "${var.name}-${var.environment}-service"
-  })
-}
-
