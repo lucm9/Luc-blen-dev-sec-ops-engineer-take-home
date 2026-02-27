@@ -11,12 +11,12 @@ terraform {
 
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
-    name = "${var.name}-${var.environment}-cluster"
+  name = "${var.name}-${var.environment}-cluster"
 
-    setting {
-        name = "containerInsights"
-        value = "enabled"
-    }
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
 
   tags = merge(var.common_tags, {
     Name = "${var.name}-${var.environment}-task"

@@ -48,12 +48,12 @@ resource "aws_db_instance" "main" {
   deletion_protection       = true
   copy_tags_to_snapshot     = true
 
-  performance_insights_enabled = true
-  monitoring_interval          = 60
-  monitoring_role_arn          = aws_iam_role.rds_monitoring.arn
+  performance_insights_enabled        = true
+  monitoring_interval                 = 60
+  monitoring_role_arn                 = aws_iam_role.rds_monitoring.arn
   iam_database_authentication_enabled = true
   performance_insights_kms_key_id     = var.kms_key_arn
-  
+
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
 
   auto_minor_version_upgrade = true

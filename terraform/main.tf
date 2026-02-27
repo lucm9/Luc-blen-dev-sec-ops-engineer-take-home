@@ -4,7 +4,7 @@ locals {
 
 #Networking
 module "networking" {
-  source = "./modules/networking"
+  source = "./modules/vpc"
 
   name        = var.name
   environment = var.environment
@@ -159,22 +159,22 @@ module "secrets" {
 
 #Database (RDS PostgreSQL)
 module "database" {
-  source = "./modules/database"
+  source = "./modules/db"
 
-  name        = var.name
+  name                = var.name
   environment         = var.environment
   isolated_subnet_ids = module.networking.isolated_subnet_ids
   rds_security_group  = aws_security_group.rds.id
   db_name             = var.db_name
   db_username         = var.db_username
   common_tags         = var.common_tags
-  kms_key_arn = module.kms.key_arn
+  kms_key_arn         = module.kms.key_arn
 }
 
 module "application" {
-  source = "./modules/application"
+  source = "./modules/ecs"
 
-  name       = var.name
+  name               = var.name
   environment        = var.environment
   private_subnet_ids = module.networking.private_subnet_ids
   container_image    = var.container_image
@@ -184,16 +184,16 @@ module "application" {
   ecs_security_group = aws_security_group.ecs.id
   alb_target_group   = module.loadbalancer.target_group_arn
   common_tags        = var.common_tags
-  kms_key_arn         = module.kms.key_arn
+  kms_key_arn        = module.kms.key_arn
 
   depends_on = [module.loadbalancer]
 }
 
 #Load Balancer (ALB)
 module "loadbalancer" {
-  source = "./modules/loadbalancer"
+  source = "./modules/alb"
 
-  name       = var.name
+  name               = var.name
   environment        = var.environment
   vpc_id             = module.networking.vpc_id
   public_subnet_ids  = module.networking.public_subnet_ids
