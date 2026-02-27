@@ -182,6 +182,8 @@ jobs:
       - app-security
       - secret-detection
       - docker-compose-test
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
 
@@ -200,20 +202,18 @@ jobs:
       # TODO: Build the Docker image
 
       - name: Build Docker image
-        run: docker build -t ghcr.io/${{ github.repository }}:${{ github.sha }} ./app
+        run: docker build -t "${IMAGE,,}:${{ github.sha }}" ./app
 
       # TODO: Tag the image with the Git SHA and "latest"
       # Hint: ghcr.io/${{ github.repository }}:${{ github.sha }}
       #       ghcr.io/${{ github.repository }}:latest
 
       - name: Tag image as latest
-        run: docker tag ghcr.io/${{ github.repository }}:${{ github.sha }} ghcr.io/${{ github.repository }}:latest
+        run: docker tag "${IMAGE,,}:${{ github.sha }}" "${IMAGE,,}:latest"
 
       - name: Push SHA-tagged image
-        run: docker push ghcr.io/${{ github.repository }}:${{ github.sha }}
-
+        run: docker push "${IMAGE,,}:${{ github.sha }}"
 
       # TODO: Push both tags to GHCR
       - name: Push latest-tagged image
-        run: docker push ghcr.io/${{ github.repository }}:latest
-
+        run: docker push "${IMAGE,,}:latest"
