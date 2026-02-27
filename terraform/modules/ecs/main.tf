@@ -20,7 +20,7 @@ resource "aws_cloudwatch_log_group" "app" {
   tags = var.common_tags
 }
 
-# ECS Task Execution Role to pulls images and reads secrets
+# ECS Task Execution Role to pull images and reads secrets
 resource "aws_iam_role" "ecs_execution" {
   name = "${var.name}-${var.environment}-ecs-execution-role"
 
