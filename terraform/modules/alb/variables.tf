@@ -21,6 +21,7 @@ variable "container_image" {
 variable "container_port" {
   description = "Port the container listens on"
   type        = number
+  default     = 3000
 }
 
 variable "secret_arn" {

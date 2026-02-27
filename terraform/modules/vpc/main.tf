@@ -1,3 +1,13 @@
+terraform {
+  required_version = ">= 1.8.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
+}
 
 #VPC
 resource "aws_vpc" "main" {
@@ -62,7 +72,7 @@ resource "aws_subnet" "isolated" {
   })
 }
 
-# --- Elastic IPs for NAT Gateways ---
+# Elastic IPs for NAT Gateways 
 resource "aws_eip" "nat" {
   count = length(var.azs)
 
@@ -73,7 +83,7 @@ resource "aws_eip" "nat" {
   })
 }
 
-# --- NAT Gateways (one per AZ for HA) ---
+#NAT Gateways (one per AZ for HA) 
 resource "aws_nat_gateway" "main" {
   count = length(var.azs)
 
@@ -87,7 +97,7 @@ resource "aws_nat_gateway" "main" {
   depends_on = [aws_internet_gateway.main]
 }
 
-# --- Public Route Table ---
+# Public Route Table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -108,7 +118,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# --- Private Route Tables (one per AZ, routing through respective NAT GW) ---
+# Private Route Tables (one per AZ, routing through respective NAT GW)
 resource "aws_route_table" "private" {
   count = length(var.azs)
 
@@ -131,7 +141,7 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
-# --- Isolated Route Table (no internet route) ---
+# Isolated Route Table (no internet route)
 resource "aws_route_table" "isolated" {
   vpc_id = aws_vpc.main.id
 
@@ -149,7 +159,7 @@ resource "aws_route_table_association" "isolated" {
   route_table_id = aws_route_table.isolated.id
 }
 
-# --- VPC Flow Logs for security auditing ---
+# VPC Flow Logs for security auditing
 resource "aws_flow_log" "main" {
   vpc_id               = aws_vpc.main.id
   traffic_type         = "ALL"
@@ -164,7 +174,8 @@ resource "aws_flow_log" "main" {
 
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/aws/vpc/${var.name}-${var.environment}/flow-logs"
-  retention_in_days = 90
+  retention_in_days = 365
+  kms_key_id        = var.kms_key_arn
 
   tags = var.common_tags
 }
@@ -204,7 +215,7 @@ resource "aws_iam_role_policy" "flow_logs" {
           "logs:DescribeLogStreams"
         ]
         Effect   = "Allow"
-        Resource = "*"
+        Resource = "${aws_cloudwatch_log_group.flow_logs.arn}:*"
       }
     ]
   })

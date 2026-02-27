@@ -28,6 +28,11 @@ variable "db_username" {
   type        = string
 }
 
+variable "kms_key_arn" {
+  description = "ARN of the KMS key for encryption"
+  type        = string
+}
+
 variable "common_tags" {
   description = "Common tags for all resources"
   type        = map(string)

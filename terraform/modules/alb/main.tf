@@ -9,21 +9,21 @@ terraform {
   }
 }
 
-# ECS Cluster
+# ECS Cluster 
 resource "aws_ecs_cluster" "main" {
-    name = "${var.name}-${var.environment}-cluster"
+  name = "${var.name}-${var.environment}-cluster"
 
-    setting {
-        name = "containerInsights"
-        value = "enabled"
-    }
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
 
   tags = merge(var.common_tags, {
-    Name = "${var.name}-${var.environment}-task"
+    Name = "${var.name}-${var.environment}-cluster"
   })
 }
 
-# Cloudwatch 
+#CloudWatch log group
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${var.name}-${var.environment}"
   retention_in_days = 365
@@ -32,7 +32,7 @@ resource "aws_cloudwatch_log_group" "app" {
   tags = var.common_tags
 }
 
-# ECS Task Execution Role to pull images and reads secrets
+#ECS Task Execution Role (pulls images, reads secrets)
 resource "aws_iam_role" "ecs_execution" {
   name = "${var.name}-${var.environment}-ecs-execution-role"
 
@@ -52,7 +52,50 @@ resource "aws_iam_role" "ecs_execution" {
   tags = var.common_tags
 }
 
-# Task Definition 
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  name = "${var.name}-${var.environment}-ecs-secrets-policy"
+  role = aws_iam_role.ecs_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [var.secret_arn]
+      }
+    ]
+  })
+}
+
+#ECS Task Role (app runtime permissions — least privilege)
+resource "aws_iam_role" "ecs_task" {
+  name = "${var.name}-${var.environment}-ecs-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.common_tags
+}
+
+#Task Definition
 resource "aws_ecs_task_definition" "app" {
   family                   = "${var.name}-${var.environment}-app"
   network_mode             = "awsvpc"
@@ -127,7 +170,10 @@ resource "aws_ecs_task_definition" "app" {
 
 data "aws_region" "current" {}
 
-#ECS Service
+# ECS Service
+# NOTE: The ECS service must wait for at least one ALB listener to associate otherwise module could fail
+# the target group with the load balancer. Without this AWS rejects the
+# CreateService call because the target group has no associated ALB.
 resource "aws_ecs_service" "app" {
   name            = "${var.name}-${var.environment}-service"
   cluster         = aws_ecs_cluster.main.id
@@ -156,3 +202,4 @@ resource "aws_ecs_service" "app" {
     Name = "${var.name}-${var.environment}-service"
   })
 }
+

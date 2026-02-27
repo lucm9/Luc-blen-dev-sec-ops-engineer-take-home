@@ -8,18 +8,13 @@ variable "environment" {
   type        = string
 }
 
-variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
+variable "db_username" {
+  description = "Database master username"
   type        = string
 }
 
-variable "azs" {
-  description = "List of availability zones"
-  type        = list(string)
-}
-
-variable "kms_key_arn" {
-  description = "ARN of the KMS key for encryption"
+variable "db_name" {
+  description = "Database name"
   type        = string
 }
 
