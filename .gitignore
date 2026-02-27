@@ -1,6 +1,5 @@
 app/node_modules/*
 app/.next/*
-.claude
 
 # Terraform
 terraform/.terraform/
@@ -12,4 +11,4 @@ terraform/.terraform/
 docker-compose.override.yml
 
 # Environment variables
-# .env
+.env
