@@ -198,3 +198,5 @@ docker compose down -v
 - Custom RDS parameter group for query logging (`log_statement = 'all'`)
 - Restrict the default VPC security group to deny all traffic
 - Terraform remote state with S3 + DynamoDB locking
+- CloudTrail for API-level audit logging across all AWS services
+- AWS Backup with automated daily snapshots and cross-region replication for disaster recovery
